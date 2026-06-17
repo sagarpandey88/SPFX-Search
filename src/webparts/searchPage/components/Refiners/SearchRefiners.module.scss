@@ -1,0 +1,51 @@
+.panel {
+  width: 220px;
+  min-width: 200px;
+  padding-right: 16px;
+  border-right: 1px solid #e1dfdd;
+}
+
+.panelHeader {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0 12px 0;
+  color: #323130;
+  border-bottom: 1px solid #e1dfdd;
+  margin-bottom: 4px;
+}
+
+.group {
+  border-bottom: 1px solid #f3f2f1;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  text-align: left;
+
+  &:hover {
+    color: #005a9e;
+  }
+}
+
+.chevron {
+  font-size: 11px;
+  color: #605e5c;
+}
+
+.entries {
+  padding-bottom: 8px;
+}
+
+.entry {
+  padding: 3px 0;
+}

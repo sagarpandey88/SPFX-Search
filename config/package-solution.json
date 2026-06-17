@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "custom-search-page-client-side-solution",
+    "id": "c16cd6da-58ee-4994-8091-9d8f0830ee0a",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.1"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "custom-search-page description"
+      },
+      "longDescription": {
+        "default": "custom-search-page description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "custom-search-page Feature",
+        "description": "The feature that activates elements of the custom-search-page solution.",
+        "id": "e37dba4c-cc78-4ded-b1ca-1d9fa02dac53",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/custom-search-page.sppkg"
+  }
+}

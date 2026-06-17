@@ -1,0 +1,19 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "useGulp": false,
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.18.0",
+    "sdksVersions": {},
+    "version": "1.22.1",
+    "libraryName": "custom-search-page",
+    "libraryId": "c16cd6da-58ee-4994-8091-9d8f0830ee0a",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "custom-search-page",
+    "solutionShortDescription": "custom-search-page description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}
