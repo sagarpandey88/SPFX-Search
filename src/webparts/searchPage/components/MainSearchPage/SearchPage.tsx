@@ -13,12 +13,14 @@ import {
 } from "@fluentui/react";
 import SearchResults from "../SearchResults/SearchResults";
 import SearchRefiners from "../Refiners/SearchRefiners";
+import SearchPagination from "../Pagination/SearchPagination";
 
 import { reducer, State } from "../../../../services/searchReducer";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import {
   REFINER_CONFIG,
   buildRefinementFilters,
+  PAGE_SIZE,
 } from "../../../../services/searchUtils";
 
 export interface ISearchPageProps {
@@ -39,6 +41,8 @@ const initialState: State = {
   results: [],
   refiners: [],
   error: null,
+  currentPage: 1,
+  totalRows: 0,
 };
 /**
  * Root search page component.
@@ -49,44 +53,44 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const refinerColumnsAsString = REFINER_CONFIG.map((cfg) => cfg.managedProperty).join(",");
   const scopeFiltersRef = useRef<string[]>(scopeFilters);
-
-  const doSearch = useCallback(    async (query: string, filters: Record<string, string[]>, updateRefiners = true) => {
-     
-    //query validation
+console.log("SearchPage initialized with scope filters:",  + "--"+ scopeFilters.join(", "));
+console.log("Scope label:", scopeLabel);
+  const doSearch = useCallback(
+    async (
+      query: string,
+      filters: Record<string, string[]>,  
+      updateRefiners = true,
+      page = 1,
+    ) => {
+      //query validation
       if (!query || query.trim().length === 0) {
-        dispatch({
-          type: "searchError",
-          payload: "Please enter a search query.",
-        });
+        dispatch({ type: "searchError", payload: "Please enter a search query." });
         return;
       }
 
-      // Start the search: show loading spinner and clear previous errors.
       dispatch({ type: "searchStart" });
+      dispatch({ type: "setPage", payload: page });
 
       try {
-        // Convert the map of active user filters to SharePoint refinement filter strings,
-        // then merge with the pre-built scope filter strings (hub or specific site).
         const mergedFilters: string[] = [
           ...scopeFiltersRef.current,
           ...buildRefinementFilters(filters),
         ];
 
-        // Call the SearchService with the current query and active filters.
-        const { items, refiners } = await new SearchService(context).search({
+        const { items, refiners, totalRows } = await new SearchService(context).search({
           queryText: query,
-          rowLimit: 10,
+          rowLimit: PAGE_SIZE,
+          startRow: (page - 1) * PAGE_SIZE,
           refinementFilters: mergedFilters,
           refinerColumns: refinerColumnsAsString,
         });
 
-        // On success, update results in state and also update refiners if this is a fresh search (not just a refiner toggle).
         dispatch({
           type: "searchSuccess",
-          payload: { items, refiners: updateRefiners ? refiners : undefined },
+          payload: { items, refiners: updateRefiners ? refiners : undefined, totalRows },
         });
       } catch (err: any) {
-        dispatch({ type: "searchError", payload: err?.message ?? String(err) }); // On error, show an error message and clear results.
+        dispatch({ type: "searchError", payload: err?.message ?? String(err) });
       }
     },
     [context],
@@ -101,10 +105,10 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
     }
   }, [doSearch]);
 
-  /** Triggered by the Search button or Enter key. Clears active user-selected filters and runs a fresh search. */
+  /** Triggered by the Search button or Enter key. Clears active user-selected filters and resets to page 1. */
   const onSearch = useCallback(() => {
     setActiveFilters({});
-    doSearch(state.query, {}); // user refiner filters are cleared on a fresh search; scope filter is merged inside doSearch.
+    doSearch(state.query, {}, true, 1);
   }, [state.query, doSearch]);
 
   /**Called when a refiner checkbox is toggled.*/
@@ -117,7 +121,7 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
           : current.filter((t) => t !== token);
         const newFilters = { ...prev, [managedProp]: updated };
         console.log("Updated active filters:", newFilters);
-        doSearch(state.query, newFilters, false); // When a refiner is toggled, we want to apply the new filters but keep the same refiner options, so we set updateRefiners to false.
+        doSearch(state.query, newFilters, false, 1); // reset to page 1 when refiner changes
        //compute 
         return newFilters;
       });
@@ -128,6 +132,7 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
   // Show refiners sidebar only when there are loaded results with non-empty refiner buckets.
   const hasResults = !state.loading && state.results.length > 0;
   const hasRefiners = state.refiners.some((r) => r.Entries?.length > 0);
+  const totalPages = Math.ceil(state.totalRows / PAGE_SIZE);
 
   return (
     <section className={`${styles.searchPage}`}>
@@ -173,9 +178,17 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
           )}
           {hasResults && (
             <div className={styles.resultContainer}>
+              <Text variant="small" styles={{ root: { color: "#605e5c", marginBottom: 4 } }}>
+                {`${state.totalRows} result${state.totalRows !== 1 ? "s" : ""} found`}
+              </Text>
               <div className={styles.resultsArea}>
                 <SearchResults items={state.results} />
               </div>
+              <SearchPagination
+                currentPage={state.currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => doSearch(state.query, activeFilters, false, page)}
+              />
             </div>
           )}
         </div>

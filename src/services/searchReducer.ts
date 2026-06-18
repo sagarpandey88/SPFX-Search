@@ -8,6 +8,8 @@ export type State = {
   results: ISearchResultItem[];
   refiners: any[];
   error?: string | null;
+  currentPage: number;
+  totalRows: number;
 };
 
 type Action =
@@ -15,9 +17,10 @@ type Action =
   | { type: "searchStart" }
   | {
       type: "searchSuccess";
-      payload: { items: ISearchResultItem[]; refiners: any[] | undefined };
+      payload: { items: ISearchResultItem[]; refiners: any[] | undefined; totalRows: number };
     }
-  | { type: "searchError"; payload: string };
+  | { type: "searchError"; payload: string }
+  | { type: "setPage"; payload: number };
 
 
 
@@ -33,6 +36,7 @@ export function reducer(state: State, action: Action): State {
         loading: false,
         results: action.payload.items,
         refiners: action.payload.refiners ?? state.refiners,
+        totalRows: action.payload.totalRows,
       };
     case "searchError":
       return {
@@ -41,7 +45,11 @@ export function reducer(state: State, action: Action): State {
         error: action.payload,
         results: [],
         refiners: [],
+        totalRows: 0,
+        currentPage: 1,
       };
+    case "setPage":
+      return { ...state, currentPage: action.payload };
     default:
       return state;
   }

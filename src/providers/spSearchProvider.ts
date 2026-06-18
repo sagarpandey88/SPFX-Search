@@ -30,7 +30,7 @@ export class SearchProvider {
     enableQueryRules,
     multiColumnSortBy,
     cacheEnabled = false    
-  }: ISearchQueryOptions): Promise<{ rows: any[]; refiners: IRefiner[] | undefined }> {
+  }: ISearchQueryOptions): Promise<{ rows: any[]; refiners: IRefiner[] | undefined; totalRows: number }> {
     try {
       let sp = this.sp;
 
@@ -56,12 +56,13 @@ export class SearchProvider {
       // Perform the search query using PnPjs
       const data = await sp.search(searchPayload);
 
-      // Extract result rows and refiners
+      // Extract result rows, refiners and total row count
       const rows = data.PrimarySearchResults;      
+      const totalRows: number = data.RawSearchResults.PrimaryQueryResult?.RelevantResults?.TotalRows ?? 0;
       const refiners = data.RawSearchResults.PrimaryQueryResult?.RefinementResults ?
         data.RawSearchResults.PrimaryQueryResult?.RefinementResults.Refiners : [];
 
-      return { rows, refiners };
+      return { rows, refiners, totalRows };
     } catch (error) {
       console.error("Error performing search query:", error);
       throw error;

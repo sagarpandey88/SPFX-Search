@@ -74,7 +74,7 @@ console.log("Refinement filters:", options.refinementFilters);
             };
         });
 
-        return { items, refiners: results.refiners || [] };
+        return { items, refiners: results.refiners || [], totalRows: results.totalRows ?? 0 };
     }
 
 

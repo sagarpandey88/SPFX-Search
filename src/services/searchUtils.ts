@@ -1,5 +1,8 @@
 import { SPFx, spfi } from "@pnp/sp/presets/all";
 
+/** Number of results per page. Change this to adjust pagination globally. */
+export const PAGE_SIZE = 5;
+
 /** Describes one refiner group: what to show in the UI and which managed property backs it. */
 export interface RefinerConfig {
   displayName: string;

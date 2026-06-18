@@ -32,4 +32,5 @@ export interface ISearchResultItem {
 export interface ISearchResult {
     items: ISearchResultItem[];
     refiners: any[];
+    totalRows: number;
 }
