@@ -33,7 +33,7 @@ const SearchResults: React.FC<ISearchResultsProps> = ({ items }) => {
             <div className={styles.title}>
               <a href={it.Path || "#"} target="_blank" rel="noopener noreferrer">{it.Title}</a>
             </div>
-            {it.Snippet && <div className={styles.snippet}>{it.Snippet}</div>}
+            {it.Snippet && <div className={styles.snippet} dangerouslySetInnerHTML={{ __html: it.Snippet }} />}
             {/* Site name/URL line — shown below the snippet, above the meta line. */}
             {(it.SiteName || it.SiteUrl) && (
               <div className={styles.site}>

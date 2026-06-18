@@ -10,6 +10,8 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
 import * as strings from 'SearchPageWebPartStrings';
 import SearchPage, { ISearchPageProps } from './components/MainSearchPage/SearchPage';
+import { getQueryParam, getHubSiteId } from '../../services/searchUtils';
+
 
 
 export interface ISearchPageWebPartProps {
@@ -20,6 +22,9 @@ export default class SearchPageWebPart extends BaseClientSideWebPart<ISearchPage
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
+  private _scopeFilters: string[] = [];
+  private _scopeLabel: string | null = null;
+  private _initialQuery: string | null = null;
 
   public render(): void {
     const element: React.ReactElement<ISearchPageProps> = React.createElement(
@@ -30,17 +35,42 @@ export default class SearchPageWebPart extends BaseClientSideWebPart<ISearchPage
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
-        context:this.context
+        context: this.context,
+        initialQuery: this._initialQuery,
+
+        //custom properties resolved in onInit and passed down to the SearchPage component, which is responsible for performing searches with the correct scope.
+        scopeFilters: this._scopeFilters,
+        scopeLabel: this._scopeLabel
+
       }
     );
 
     ReactDom.render(element, this.domElement);
   }
 
-  protected onInit(): Promise<void> {
-    return this._getEnvironmentMessage().then(message => {
+  protected async onInit(): Promise<void> {
+    await this._getEnvironmentMessage().then(message => {
       this._environmentMessage = message;
     });
+
+    // Determine search scope once, before the first render. Read querystring
+    const sourceSiteId = getQueryParam("sourceSiteId");
+    this._initialQuery = getQueryParam("q");
+
+    if (sourceSiteId) {
+      // Child site redirect: scope to the specific site collection by GUID.
+      this._scopeFilters = [`SiteId:"${sourceSiteId}"`];
+      const siteTitle = getQueryParam("sourceSiteTitle") || "a specific site collection";
+      this._scopeLabel = `Showing results from ${siteTitle}`;
+    } else {
+      // Hub site: scope to hub and all associated sites via DepartmentId.
+      const hubSiteId = await getHubSiteId(this.context);
+      if (hubSiteId) {
+        this._scopeFilters = [`DepartmentId:"${hubSiteId}"`];
+        this._scopeLabel = "Showing results from all sites";
+      }
+      // No hub association — scope left empty, tenant-wide results, no label.
+    }
   }
 
 

@@ -1,10 +1,11 @@
-import { SearchResultItem } from "./searchService";
+import { ISearchResultItem } from "../models/searchModel";
+
 
 
 export type State = {
   query: string;
   loading: boolean;
-  results: SearchResultItem[];
+  results: ISearchResultItem[];
   refiners: any[];
   error?: string | null;
 };
@@ -14,7 +15,7 @@ type Action =
   | { type: "searchStart" }
   | {
       type: "searchSuccess";
-      payload: { items: SearchResultItem[]; refiners: any[] | undefined };
+      payload: { items: ISearchResultItem[]; refiners: any[] | undefined };
     }
   | { type: "searchError"; payload: string };
 

@@ -14,7 +14,7 @@
 }
 
 .thumbnail {
-  width: 96px;
+  min-width: 100px;
   height: 72px;
   background: #f3f2f1;
   display: flex;
@@ -44,6 +44,14 @@
 .snippet {
   color: #323130;
   margin: 0 0 4px 0;
+
+  mark {
+    background-color: #fff4ce;
+    color: #323130;
+    font-weight: 600;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
 }
 
 .site {

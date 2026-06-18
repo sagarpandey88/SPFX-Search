@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useReducer, useCallback, useState } from "react";
+import { useReducer, useCallback, useState, useEffect, useRef } from "react";
 import styles from "./SearchPage.module.scss";
 import { SearchService } from "../../../../services/searchService";
 import {
@@ -13,10 +13,13 @@ import {
 } from "@fluentui/react";
 import SearchResults from "../SearchResults/SearchResults";
 import SearchRefiners from "../Refiners/SearchRefiners";
-import { ActiveFilters } from "../../../../models/searchModel";
+
 import { reducer, State } from "../../../../services/searchReducer";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
-import { REFINER_CONFIG } from "../../../../services/searchUtils";
+import {
+  REFINER_CONFIG,
+  buildRefinementFilters,
+} from "../../../../services/searchUtils";
 
 export interface ISearchPageProps {
   description: string;
@@ -25,6 +28,9 @@ export interface ISearchPageProps {
   hasTeamsContext: boolean;
   userDisplayName: string;
   context: BaseComponentContext;
+  scopeFilters: string[];
+  scopeLabel: string | null;
+  initialQuery: string | null;
 }
 
 const initialState: State = {
@@ -36,29 +42,17 @@ const initialState: State = {
 };
 /**
  * Root search page component.
- * Manages query input, result state, active refiner filters,
- * and lays out the sidebar refiners panel alongside the results list.
  */
 const SearchPage: React.FC<ISearchPageProps> = (props) => {
-  const { context } = props;
-  const [state, dispatch] = useReducer(reducer, initialState); //state management with reducer pattern due to multiple related values (query, loading, results, refiners, error) that change together in response to search actions.
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({}); //Tracks which refiner filters are currently applied by the user, structured as a map of managed property names to arrays of selected tokens. Updated when users toggle refiner checkboxes, and used as input to the search function to apply refinements without refreshing the refiner options list.
-  const refinerColumnsAsString = REFINER_CONFIG.map((cfg) => cfg.managedProperty).join(","); //Comma-separated list of refiner managed properties to request from the search API, derived from the REFINER_CONFIG. This is passed to the SearchService to ensure we get back the refiner buckets for the properties we want to display in the UI. When a user toggles a refiner checkbox, we want to keep the same list of refiners in the search results so the options don't refresh and lose their checked state, which is why this is defined outside of the doSearch function and not regenerated on every search.
-  /**
-   * Core search executor.
-   * @param updateRefiners - When true (fresh search), replaces the refiner options
-   *   in state with the new buckets returned by SharePoint.  When false (refiner
-   *   checkbox click), the existing refiner options are preserved so the user can
-   *   continue selecting/deselecting without the panel re-rendering.
-   */
-  const doSearch = useCallback(
-    async (
-      query: string,
-      filters: ActiveFilters,
-      updateRefiners = true,
-      refinerFields?: string[],
-    ) => {
-      //query validation: prevent empty searches and show an error message instead of calling the search API.
+  const { context, scopeFilters, scopeLabel, initialQuery } = props;
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+  const refinerColumnsAsString = REFINER_CONFIG.map((cfg) => cfg.managedProperty).join(",");
+  const scopeFiltersRef = useRef<string[]>(scopeFilters);
+
+  const doSearch = useCallback(    async (query: string, filters: Record<string, string[]>, updateRefiners = true) => {
+     
+    //query validation
       if (!query || query.trim().length === 0) {
         dispatch({
           type: "searchError",
@@ -71,12 +65,19 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
       dispatch({ type: "searchStart" });
 
       try {
-        // Call the SearchService with the current query and active filters. The service will handle building the query and normalizing results.
+        // Convert the map of active user filters to SharePoint refinement filter strings,
+        // then merge with the pre-built scope filter strings (hub or specific site).
+        const mergedFilters: string[] = [
+          ...scopeFiltersRef.current,
+          ...buildRefinementFilters(filters),
+        ];
+
+        // Call the SearchService with the current query and active filters.
         const { items, refiners } = await new SearchService(context).search({
-          queryText: query, //from text input
+          queryText: query,
           rowLimit: 10,
-          refinementFilters: filters,
-          refinerColumns: refinerColumnsAsString //if refinerFields is provided (when toggling a refiner), use it to keep the same refiner options; otherwise (fresh search) use the full list of refiners from config.
+          refinementFilters: mergedFilters,
+          refinerColumns: refinerColumnsAsString,
         });
 
         // On success, update results in state and also update refiners if this is a fresh search (not just a refiner toggle).
@@ -91,26 +92,33 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
     [context],
   );
 
-  /** Triggered by the Search button or Enter key. Clears active filters and runs a fresh search. */
+ 
+ // Auto-execute a search if a query was passed via the ?q= querystring (e.g. redirected from a child site).
+  useEffect(() => {
+    if (initialQuery) {
+      dispatch({ type: "setQuery", payload: initialQuery });
+      doSearch(initialQuery, {});
+    }
+  }, [doSearch]);
+
+  /** Triggered by the Search button or Enter key. Clears active user-selected filters and runs a fresh search. */
   const onSearch = useCallback(() => {
     setActiveFilters({});
-    doSearch(state.query, {}); //refiner filters are cleared when doing a fresh search, so we pass an empty object.
+    doSearch(state.query, {}); // user refiner filters are cleared on a fresh search; scope filter is merged inside doSearch.
   }, [state.query, doSearch]);
 
-  /**
-   * Called when a refiner checkbox is toggled.
-   * Updates activeFilters and re-runs the search with refinement applied,
-   * but does NOT refresh the refiner option list (updateRefiners = false).
-   */
-  const onRefinerChange = useCallback(
-    (managedProp: string, token: string, checked: boolean) => {
-      setActiveFilters((prev) => {
+  /**Called when a refiner checkbox is toggled.*/
+  const onRefinerChange = useCallback(    (managedProp: string, token: string, checked: boolean) => {
+     console.log(`Refiner change: ${managedProp} - ${token} - ${checked}`);
+    setActiveFilters((prev) => {
         const current = prev[managedProp] || [];
         const updated = checked
           ? [...current, token]
           : current.filter((t) => t !== token);
         const newFilters = { ...prev, [managedProp]: updated };
+        console.log("Updated active filters:", newFilters);
         doSearch(state.query, newFilters, false); // When a refiner is toggled, we want to apply the new filters but keep the same refiner options, so we set updateRefiners to false.
+       //compute 
         return newFilters;
       });
     },
@@ -124,6 +132,11 @@ const SearchPage: React.FC<ISearchPageProps> = (props) => {
   return (
     <section className={`${styles.searchPage}`}>
       <Stack tokens={{ childrenGap: 12 }}>
+        {scopeLabel && (
+          <Text variant="smallPlus" styles={{ root: { color: "#605e5c" } }}>
+            {scopeLabel}
+          </Text>
+        )}
         <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="end">
           <SearchBox
             placeholder="Search"

@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import { SPFx, spfi, SPFI, IRefiner } from "@pnp/sp/presets/all";
+import { ISearchQueryOptions } from "../models/searchModel";
 
 
 export class SearchProvider {
@@ -16,19 +17,6 @@ export class SearchProvider {
     this.sp = spfi().using(SPFx(this.context));
   }
 
-  /**
-   * Performs a search query in SharePoint.
-   * @param queryText - The search query text.
-   * @param sortBy - The field by which to sort the results.
-   * @param sortOrder - The order of sorting (e.g., 'ascending' or 'descending').
-   * @param selectProperties - The properties to include in the search results.
-   * @param refinementFilters - Refiners to apply to the search results.
-   * @param rowLimit - The maximum number of results to return.
-   * @param startRow - The starting row for paginated results.
-   * @param enableQueryRules - Whether to enable query rules.
-   * @param cacheEnabled - Optional parameter to enable caching.
-   * @returns A Promise resolving to an object containing result rows and refiners.
-   */
   public async searchQuery({
     queryText,
     queryTemplate,
@@ -42,20 +30,7 @@ export class SearchProvider {
     enableQueryRules,
     multiColumnSortBy,
     cacheEnabled = false    
-  }: {
-    queryText: string;
-    queryTemplate?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    selectProperties?: string[];
-    refinementFilters?: string[];
-    refinerColumns?:string;
-    rowLimit?: number;
-    startRow?: number;
-    enableQueryRules?: boolean;
-    multiColumnSortBy? : any[];
-    cacheEnabled?: boolean;
-  }): Promise<{ rows: any[]; refiners: IRefiner[] | undefined }> {
+  }: ISearchQueryOptions): Promise<{ rows: any[]; refiners: IRefiner[] | undefined }> {
     try {
       let sp = this.sp;
 
@@ -71,7 +46,11 @@ export class SearchProvider {
         RowLimit: rowLimit,
         StartRow: startRow,
         EnableQueryRules: enableQueryRules,
-        Refiners:refinerColumns
+        Refiners:refinerColumns,
+        EnableStemming: false,
+        EnablePhonetic: false,
+         EnableNicknames: false,
+      
       };
 
       // Perform the search query using PnPjs
