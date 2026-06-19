@@ -31,8 +31,9 @@ export interface ISearchPageProps {
   userDisplayName: string;
   context: BaseComponentContext;
   scopeFilters: string[];
-  scopeLabel: string | null;
   initialQuery: string | null;
+  scopeLabel?: string | null;
+  isSiteScoped?: boolean;
 }
 
 const initialState: State = {
@@ -48,13 +49,12 @@ const initialState: State = {
  * Root search page component.
  */
 const SearchPage: React.FC<ISearchPageProps> = (props) => {
-  const { context, scopeFilters, scopeLabel, initialQuery } = props;
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
-  const refinerColumnsAsString = REFINER_CONFIG.map((cfg) => cfg.managedProperty).join(",");
-  const scopeFiltersRef = useRef<string[]>(scopeFilters);
-console.log("SearchPage initialized with scope filters:",  + "--"+ scopeFilters.join(", "));
-console.log("Scope label:", scopeLabel);
+  const { context, scopeFilters, scopeLabel, isSiteScoped, initialQuery } = props;
+  const [state, dispatch] = useReducer(reducer, initialState);//Reducer state for managing search state
+  const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});//state for managing active filters selected by the user
+  const refinerColumnsAsString = REFINER_CONFIG.map((cfg) => cfg.managedProperty).join(",");//string of refiner managed properties to pass to the search API
+  const scopeFiltersRef = useRef<string[]>(scopeFilters);//ref to hold the scope filters (Hub or Child Site) so they don't change on re-renders
+
   const doSearch = useCallback(
     async (
       query: string,
@@ -68,15 +68,17 @@ console.log("Scope label:", scopeLabel);
         return;
       }
 
-      dispatch({ type: "searchStart" });
-      dispatch({ type: "setPage", payload: page });
+      dispatch({ type: "searchStart" });//start search and set loading state to true
+      dispatch({ type: "setPage", payload: page });//set the current page in the state
 
       try {
+        // Merge the scope filters (Hub or Child Site) with the user-selected refiner filters.
         const mergedFilters: string[] = [
           ...scopeFiltersRef.current,
           ...buildRefinementFilters(filters),
         ];
 
+        // Call the search service to perform the search with the query, pagination, and filters.
         const { items, refiners, totalRows } = await new SearchService(context).search({
           queryText: query,
           rowLimit: PAGE_SIZE,
@@ -85,6 +87,7 @@ console.log("Scope label:", scopeLabel);
           refinerColumns: refinerColumnsAsString,
         });
 
+        // Update the state with the search results, refiners (if requested), and total rows.
         dispatch({
           type: "searchSuccess",
           payload: { items, refiners: updateRefiners ? refiners : undefined, totalRows },
@@ -101,14 +104,18 @@ console.log("Scope label:", scopeLabel);
   useEffect(() => {
     if (initialQuery) {
       dispatch({ type: "setQuery", payload: initialQuery });
-      doSearch(initialQuery, {});
+      doSearch(initialQuery, {}).catch((err) => {
+        dispatch({ type: "searchError", payload: err?.message ?? String(err) });
+      });
     }
   }, [doSearch]);
 
   /** Triggered by the Search button or Enter key. Clears active user-selected filters and resets to page 1. */
   const onSearch = useCallback(() => {
     setActiveFilters({});
-    doSearch(state.query, {}, true, 1);
+    doSearch(state.query, {}, true, 1).catch((err) => {
+      dispatch({ type: "searchError", payload: err?.message ?? String(err) });
+    });
   }, [state.query, doSearch]);
 
   /**Called when a refiner checkbox is toggled.*/
@@ -121,7 +128,9 @@ console.log("Scope label:", scopeLabel);
           : current.filter((t) => t !== token);
         const newFilters = { ...prev, [managedProp]: updated };
         console.log("Updated active filters:", newFilters);
-        doSearch(state.query, newFilters, false, 1); // reset to page 1 when refiner changes
+        doSearch(state.query, newFilters, false, 1).catch((err) => {
+          dispatch({ type: "searchError", payload: err?.message ?? String(err) });
+        }); // reset to page 1 when refiner changes
        //compute 
         return newFilters;
       });
@@ -140,6 +149,20 @@ console.log("Scope label:", scopeLabel);
         {scopeLabel && (
           <Text variant="smallPlus" styles={{ root: { color: "#605e5c" } }}>
             {scopeLabel}
+            {isSiteScoped && (
+              <>
+                {" \u2014 "}
+                <a
+                  href={(() => {
+                    const keyword = (state.query || initialQuery || "").trim();
+                    return window.location.pathname + (keyword ? `?q=${encodeURIComponent(keyword)}` : "");
+                  })()}
+                  className={styles.link}
+                >
+                  Click here to show results from all sites
+                </a>
+              </>
+            )}
           </Text>
         )}
         <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="end">

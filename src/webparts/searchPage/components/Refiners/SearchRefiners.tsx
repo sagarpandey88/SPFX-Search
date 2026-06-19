@@ -2,7 +2,10 @@ import * as React from "react";
 import { useState } from "react";
 import { Checkbox, Icon } from "@fluentui/react";
 import styles from "./SearchRefiners.module.scss";
-import { getProcessedEntries, REFINER_CONFIG } from "../../../../services/searchUtils";
+import {
+  getProcessedEntries,
+  REFINER_CONFIG,
+} from "../../../../services/searchUtils";
 
 interface ISearchRefinersProps {
   refiners: any[];
@@ -15,8 +18,7 @@ const SearchRefiners: React.FC<ISearchRefinersProps> = ({
   activeFilters,
   onChange,
 }) => {
-  // Tracks which groups are collapsed; empty = all expanded by default.
-  const [collapsed, setCollapsed] = useState<{ [key: string]: boolean }>({});
+  const [collapsed, setCollapsed] = useState<{ [key: string]: boolean }>({}); // Tracks which groups are collapsed; empty = all expanded by default.
 
   /** Toggle collapsed state for the group identified by its managed property name. */
   const toggle = (name: string) =>
@@ -37,11 +39,10 @@ const SearchRefiners: React.FC<ISearchRefinersProps> = ({
         const refiner = refiners.find((r) => r.Name === cfg.managedProperty);
         const isCollapsed = !!collapsed[cfg.managedProperty];
         const selected = activeFilters[cfg.managedProperty] || [];
-
-        //clean the refiners as taxonmoy refiners have extra GUID.
-          const displayEntries = getProcessedEntries(refiner.Entries, cfg.isTaxonomy);
-
-
+        const displayEntries = getProcessedEntries(
+          refiner.Entries,
+          cfg.isTaxonomy,
+        ); //clean the refiners as taxonmoy refiners have extra GUID.
 
         return (
           <div key={cfg.managedProperty} className={styles.group}>
@@ -66,11 +67,7 @@ const SearchRefiners: React.FC<ISearchRefinersProps> = ({
                       label={`${entry.label} (${entry.count})`}
                       checked={selected.includes(entry.token)}
                       onChange={(_, chk) =>
-                        onChange(
-                          cfg.managedProperty,
-                          entry.token,
-                          !!chk,
-                        )
+                        onChange(cfg.managedProperty, entry.token, !!chk)
                       }
                     />
                   </div>

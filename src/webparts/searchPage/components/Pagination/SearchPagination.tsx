@@ -7,11 +7,6 @@ export interface ISearchPaginationProps {
   onPageChange: (page: number) => void;
 }
 
-/**
- * Renders Previous / Next navigation buttons with a "Page X of Y" label.
- * Calls onPageChange with the new page number — the parent is responsible
- * for triggering the search API call.
- */
 const SearchPagination: React.FC<ISearchPaginationProps> = ({
   currentPage,
   totalPages,

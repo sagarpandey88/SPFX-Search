@@ -1,3 +1,5 @@
+import { IRefiner } from "@pnp/sp/search";
+
 export interface ISearchQueryOptions {
     queryText: string;
     queryTemplate?: string;
@@ -31,6 +33,17 @@ export interface ISearchResultItem {
 /** The shape returned by SearchService.search(): normalized items plus raw refiner buckets. */
 export interface ISearchResult {
     items: ISearchResultItem[];
-    refiners: any[];
+    refiners: IRefiner[]; //any[];
     totalRows: number;
+}
+
+export interface IRefinerConfig {
+  displayName: string;
+  managedProperty: string;
+  isTaxonomy?: boolean;
+}
+export interface ITaxonomyEntry {
+  token: string;
+  label: string;
+  count: string;
 }

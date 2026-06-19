@@ -1,14 +1,9 @@
 import * as React from "react";
 import styles from "./SearchResults.module.scss";
-
-/**
- * Renders a list of normalized search result items in a SharePoint-style card layout:
- * thumbnail on the left, title link + snippet + metadata on the right.
- * Title links open in a new tab.
- */
+import { ISearchResultItem } from "../../../../models/searchModel";
 
 type ISearchResultsProps = {
-  items: any[];
+  items: ISearchResultItem[];//any
 };
 
 const SearchResults: React.FC<ISearchResultsProps> = ({ items }) => {

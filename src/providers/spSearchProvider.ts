@@ -8,10 +8,6 @@ export class SearchProvider {
   private context: BaseComponentContext;
   private sp: SPFI;
 
-  /**
-   * Constructor to initialize the SearchProvider with SPFx context.
-   * @param context - The SPFx context of the web part or component.
-   */
   constructor(context: BaseComponentContext) {
     this.context = context;
     this.sp = spfi().using(SPFx(this.context));
@@ -28,14 +24,10 @@ export class SearchProvider {
     rowLimit,
     startRow,
     enableQueryRules,
-    multiColumnSortBy,
-    cacheEnabled = false    
+    multiColumnSortBy    
   }: ISearchQueryOptions): Promise<{ rows: any[]; refiners: IRefiner[] | undefined; totalRows: number }> {
     try {
       let sp = this.sp;
-
-    
-
       // Construct the search query payload
       const searchPayload: any = {
         Querytext: queryText,
@@ -49,14 +41,11 @@ export class SearchProvider {
         Refiners:refinerColumns,
         EnableStemming: false,
         EnablePhonetic: false,
-         EnableNicknames: false,
-      
+        EnableNicknames: false,      
       };
 
       // Perform the search query using PnPjs
       const data = await sp.search(searchPayload);
-
-      // Extract result rows, refiners and total row count
       const rows = data.PrimarySearchResults;      
       const totalRows: number = data.RawSearchResults.PrimaryQueryResult?.RelevantResults?.TotalRows ?? 0;
       const refiners = data.RawSearchResults.PrimaryQueryResult?.RefinementResults ?

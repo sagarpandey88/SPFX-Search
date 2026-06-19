@@ -1,7 +1,5 @@
 import { ISearchResultItem } from "../models/searchModel";
 
-
-
 export type State = {
   query: string;
   loading: boolean;
@@ -21,7 +19,6 @@ type Action =
     }
   | { type: "searchError"; payload: string }
   | { type: "setPage"; payload: number };
-
 
 
 export function reducer(state: State, action: Action): State {

@@ -1,74 +1,63 @@
-import { SPFx, spfi } from "@pnp/sp/presets/all";
+import { ISearchQuery, SPFx, Web, spfi } from "@pnp/sp/presets/all";
+import { IRefinerConfig, ITaxonomyEntry } from "../models/searchModel";
+
+import "@pnp/sp/search";
+import { SearchService } from "./searchService";
+
 
 /** Number of results per page. Change this to adjust pagination globally. */
 export const PAGE_SIZE = 5;
-
-/** Describes one refiner group: what to show in the UI and which managed property backs it. */
-export interface RefinerConfig {
-  displayName: string;
-  managedProperty: string;
-  isTaxonomy?: boolean;
-}
-
-export const defaultSelectProperties = [
-            "Title",
-            "Path",
-            "HitHighlightedSummary",
-            "Summary",
-            "PreferredName",
-            "Author",
-            "Editor",
-            "LastModifiedTime",
-            "Modified",
-            "FileType",
-            "ViewsLifeTime",
-            "ViewsRecent",
-            "ServerRedirectedURL",
-            "SPWebUrl",
-            "SiteTitle",
-            "SPSiteURL",
-            "Thumbnail",
-            "PictureURL",
-            "PublishingImage"
-        ];
-/** Maps managed property names to human-readable refiner panel labels. */
-export const REFINER_CONFIG: RefinerConfig[] = [
+export const contentClassFilter = "(contentclass:STS_ListItem OR contentclass:STS_Web OR contentclass:STS_Site)";
+export const REFINER_CONFIG: IRefinerConfig[] = [
   { displayName: "Author", managedProperty: "Author" },
   { displayName: "Category", managedProperty: "RefinableString99", isTaxonomy: false },
   { displayName: "Country", managedProperty: "RefinableString00", isTaxonomy: true },
 ];
+export const defaultSelectProperties = [
+  "Title",
+  "Path",
+  "HitHighlightedSummary",
+  "Summary",
+  "PreferredName",
+  "Author",
+  "Editor",
+  "LastModifiedTime",
+  "Modified",
+  "FileType",
+  "ViewsLifeTime",
+  "ViewsRecent",
+  "ServerRedirectedURL",
+  "SPWebUrl",
+  "SiteTitle",
+  "SPSiteURL",
+  "Thumbnail",
+  "PictureURL",
+  "PublishingImage",
+  //"AutoPreviewUrl",
+  //"ServerRedirectedEmbedURL"
 
-/**
- * Reads a single query-string parameter from the current page URL.
- * Returns null if the parameter is absent or empty.
- */
+];
+
 export function getQueryParam(name: string): string | null {
   const params = new URLSearchParams(window.location.search);
   return params.get(name) || null;
 }
 
-    /**
- * Converts the activeFilters map into SharePoint RefinementFilter strings.
- * Single selection: "Author:token"
- * Multi-selection:  "Author:or(token1,token2)" — SharePoint OR syntax.
- */
+
 export function buildRefinementFilters(filters: Record<string, string[]>): string[] {
-        return Object.entries(filters)
-            .filter(([, tokens]) => tokens.length > 0)
-            .map(([name, tokens]) =>
-                tokens.length === 1
-                    ? `${name}:${tokens[0]}`
-                    : `${name}:or(${tokens.join(",")})`
-            );
-          }
-            
-/**
- * Fetches the hub site ID (GUID) for the current site collection via PnPjs:
- * equivalent to GET /_api/site?$select=IsHubSite,HubSiteId
- *
- * Returns the HubSiteId GUID string when the site is associated with (or is)
- * a hub site, or null if it is not part of any hub.
- */
+
+  // Single selection: "Author:token"
+  // Multi-selection:  "Author:or(token1,token2)" — SharePoint OR syntax.
+  return Object.entries(filters)
+    .filter(([, tokens]) => tokens.length > 0)
+    .map(([name, tokens]) =>
+      tokens.length === 1
+        ? `${name}:${tokens[0]}`
+        : `${name}:or(${tokens.join(",")})`
+    );
+}
+
+
 export async function getHubSiteId(context: any): Promise<string | null> {
   try {
     const sp = spfi().using(SPFx(context));
@@ -84,18 +73,7 @@ export async function getHubSiteId(context: any): Promise<string | null> {
   }
 }
 
-/** Cleaned structure optimized for UI rendering */
-export interface IProcessedEntry {
-  token: string;
-  label: string;
-  count: string;
-}
-
-/**
- * Filters and transforms raw SharePoint search entries.
- * Isolates L0 records for taxonomy types and strips down raw pipe string structures.
- */
-export function getProcessedEntries(entries: any[], isTaxonomy?: boolean): IProcessedEntry[] {
+export function getProcessedEntries(entries: any[], isTaxonomy?: boolean): ITaxonomyEntry[] {
   if (!entries) return [];
 
   // 1. If it's a taxonomy field, filter out GTSet and GP0 noise rows
@@ -109,7 +87,7 @@ export function getProcessedEntries(entries: any[], isTaxonomy?: boolean): IProc
 
     if (isTaxonomy) {
       const parts = entry.RefinementValue.split('|');
-      cleanLabel = parts[parts.length - 1]; // Pulls clean text like "Swiss"
+      cleanLabel = parts[parts.length - 1];
     }
 
     return {
@@ -119,3 +97,17 @@ export function getProcessedEntries(entries: any[], isTaxonomy?: boolean): IProc
     };
   });
 }
+
+
+export async function getSiteTitleById(siteId: string, context: any): Promise<string | null> {
+
+  const results = await new SearchService(context).search({
+    queryText: `SiteID:"${siteId}" AND contentclass:"STS_Site"`,
+    selectProperties: ["Title","Path"],
+    rowLimit: 1
+  });
+  return results.items[0]?.Title || null;
+
+}
+
+ 

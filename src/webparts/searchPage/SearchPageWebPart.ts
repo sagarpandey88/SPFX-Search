@@ -10,7 +10,7 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
 import * as strings from 'SearchPageWebPartStrings';
 import SearchPage, { ISearchPageProps } from './components/MainSearchPage/SearchPage';
-import { getQueryParam, getHubSiteId } from '../../services/searchUtils';
+import { getQueryParam, getHubSiteId, getSiteTitleById } from '../../services/searchUtils';
 
 
 
@@ -24,6 +24,8 @@ export default class SearchPageWebPart extends BaseClientSideWebPart<ISearchPage
   private _environmentMessage: string = '';
   private _scopeFilters: string[] = [];
   private _scopeLabel: string | null = null;
+  private _sourceSiteId: string | null = null;
+  private _isSiteScoped: boolean = false;
   private _initialQuery: string | null = null;
 
   public render(): void {
@@ -37,10 +39,11 @@ export default class SearchPageWebPart extends BaseClientSideWebPart<ISearchPage
         userDisplayName: this.context.pageContext.user.displayName,
         context: this.context,
         initialQuery: this._initialQuery,
+        scopeLabel: this._scopeLabel,
+        isSiteScoped: this._isSiteScoped,
 
         //custom properties resolved in onInit and passed down to the SearchPage component, which is responsible for performing searches with the correct scope.
-        scopeFilters: this._scopeFilters,
-        scopeLabel: this._scopeLabel
+        scopeFilters: this._scopeFilters
 
       }
     );
@@ -56,12 +59,20 @@ export default class SearchPageWebPart extends BaseClientSideWebPart<ISearchPage
     // Determine search scope once, before the first render. Read querystring
     const sourceSiteId = getQueryParam("sourceSiteId");
     this._initialQuery = getQueryParam("q");
+    this._sourceSiteId = sourceSiteId;
 
     if (sourceSiteId) {
       // Child site redirect: scope to the specific site collection by GUID.
       this._scopeFilters = [`SiteId:"${sourceSiteId}"`];
-      const siteTitle = getQueryParam("sourceSiteTitle") || "a specific site collection";
-      this._scopeLabel = `Showing results from ${siteTitle}`;
+      // Resolve site title now (in web part onInit) and set scope label for component.
+      try {
+        const title = await getSiteTitleById(sourceSiteId, this.context);
+        this._scopeLabel = `Showing results from ${title || "a specific site collection"}`;
+        this._isSiteScoped = true;
+      } catch {
+        this._scopeLabel = `Showing results from a specific site collection`;
+        this._isSiteScoped = true;
+      }
     } else {
       // Hub site: scope to hub and all associated sites via DepartmentId.
       const hubSiteId = await getHubSiteId(this.context);
